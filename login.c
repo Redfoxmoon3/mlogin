@@ -47,7 +47,7 @@ static void __attribute__((optimize("O0"))) memset_noopt(void* mem, int c, size_
 static bool switch_user_context(struct passwd* pw, const char* username)
 {
 	/* temporary */
-	#ifdef INSECURE
+	#ifndef INSECURE
 	if(initgroups(username, pw->pw_gid) == -1) {
 		printf("initgroups failed: %s", strerror(errno));
 		exit(1);
