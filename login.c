@@ -11,6 +11,7 @@
 #include <signal.h>
 #ifdef __midipix__
 #include <windows.h>
+#include <ctype.h>
 
 #define IFLAG 1
 #define WFLAG 1
