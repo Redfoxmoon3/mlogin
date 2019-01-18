@@ -1,3 +1,7 @@
+/* mlogin: minimalistic login                */
+/* Copyright (c) 2019  Ørjan Malde           */
+/* Released under LGPL, see COPYRIGHT.MLOGIN */
+
 #define _GNU_SOURCE
 #include <sys/types.h>
 #include <unistd.h>
