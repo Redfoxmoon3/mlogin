@@ -184,7 +184,7 @@ int main(int argc, char **argv)
 #endif
 		(void)setenv("PATH", "/local/sbin:/local/bin:/sbin:/bin", 0);
 
-		execlp(pwd->pw_shell, pwd->pw_shell, (const char*)NULL);
+		execlp(pwd->pw_shell, "-i", (const char*)NULL);
 		printf("login failed with error: %s", strerror(errno));
 		exit(1);
 	}
