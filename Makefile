@@ -1,7 +1,7 @@
 CFLAGS += -std=c99 -I.
 
 login: login.c timingsafe_memcmp.c
-	$(CC) $(CFLAGS) -o login login.c timingsafe_memcmp.c $(LDFLAGS) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 .PHONY: clean install
 
