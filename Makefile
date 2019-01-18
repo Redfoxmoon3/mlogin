@@ -8,6 +8,6 @@ login: login.c timingsafe_memcmp.c
 clean:
 	rm -f *.o login
 
-install:
+install: login
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	cp login $(DESTDIR)$(PREFIX)/bin/login
