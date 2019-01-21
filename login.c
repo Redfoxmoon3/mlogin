@@ -188,6 +188,10 @@ int main(int argc, char **argv)
 #endif
 		(void)setenv("PATH", "/local/sbin:/local/bin:/sbin:/bin", 0);
 
+		(void)signal(SIGTSTP, SIG_DFL);
+		(void)signal(SIGQUIT, SIG_DFL);
+	        (void)signal(SIGINT, SIG_DFL);
+
 		execlp(pwd->pw_shell, "-i", (const char*)NULL);
 		printf("login failed with error: %s", strerror(errno));
 		exit(1);
