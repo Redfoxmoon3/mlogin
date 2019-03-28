@@ -93,7 +93,6 @@ int main(int argc, char **argv)
 	struct passwd *pwd;
 	char* username = NULL;
 	int c;
-	bool authenticated = false;
 	int pflag, fflag, iflag, wflag = 0;
 
 	while((c = getopt(argc, argv, "pfh:iw")) != -1)
@@ -123,43 +122,35 @@ int main(int argc, char **argv)
 	else if(*argv)
 		username = *argv;
 	else {
-		/* TODO: hostname, emulate shadow's login(1) prompt */
 		printf("login: ");
 		fflush(0);
 		(void)scanf("%ms", &username);
 	}
 	pwd = getpwnam(username);
-	
+
 	if(!iflag)
 	{
 		char* pw = getpass("Password: ");
 		if(pwd) {
 			/* if hash == 0 then authenticated = true */
-			if(*pwd->pw_passwd == '\0') {
-				authenticated = true;
-			}
-			else if(pw) {
+			if(!(*pwd->pw_passwd == '\0' && !strlen(pw))) {
 				char* pw_encrypted = crypt(pw, pwd->pw_passwd);
-				if(!timingsafe_memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted)))
-					authenticated = true;
+				if(!timingsafe_memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted))) {
+					puts("Login incorrect.");
+					memset_noopt(pw, 0, strlen(pw));
+					exit(1);
+				}
 			}
-			else {
-				puts("not authenticated");
-				authenticated = false;
-			}
+			memset_noopt(pw, 0, strlen(pw));
 		} else {
-			authenticated = false;
+			/* user doesn't exist, bail */
+			puts("Login incorrect.");
+			memset_noopt(pw, 0, strlen(pw));
+			exit(1);
 		}
-		memset_noopt(pw, 0, strlen(pw));
-	} else
-		authenticated = true; /* iflag */
+	}
 	
 	endpwent();
-
-	if(!authenticated) {
-		puts("Login incorrect.");
-		exit(1);
-	}
 
 	/* authenticated, attempt to set user context and spawn user shell */
 	if(switch_user_context(pwd, username)) {
@@ -197,12 +188,9 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	puts("could not switch to specified user.");
-
-
 }
 
 void usage(void) {
-	puts("login -i (skip authentication, only works on midipix, temporary)");
 	puts("login -w (acquire username through Win32)");
 	puts("login -p (preserve environment)");
 	puts("login -f (no secondary authentication, unused)");
