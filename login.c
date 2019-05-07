@@ -26,6 +26,10 @@
 
 #include "login.h"
 
+#ifndef HAVE_EXPLICIT_BZERO
+void explicit_bzero(void*, size_t);
+#endif
+
 
 static char* get_win32_username(void)
 {
@@ -41,12 +45,6 @@ static char* get_win32_username(void)
 #else
 	return "";
 #endif
-}
-
-/* force memset */
-static void __attribute__((optimize("O0"))) memset_noopt(void* mem, int c, size_t memsiz)
-{
-	memset(mem, c, memsiz);
 }
 
 static bool switch_user_context(struct passwd* pw, const char* username)
@@ -137,15 +135,17 @@ int main(int argc, char **argv)
 				char* pw_encrypted = crypt(pw, pwd->pw_passwd);
 				if(!timingsafe_memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted))) {
 					puts("Login incorrect.");
-					memset_noopt(pw, 0, strlen(pw));
+					explicit_bzero(pw, strlen(pw));
+					free(pw);
 					exit(1);
 				}
 			}
-			memset_noopt(pw, 0, strlen(pw));
+			explicit_bzero(pw, strlen(pw));
 		} else {
 			/* user doesn't exist, bail */
 			puts("Login incorrect.");
-			memset_noopt(pw, 0, strlen(pw));
+			explicit_bzero(pw, strlen(pw));
+			free(pw);
 			exit(1);
 		}
 	}
