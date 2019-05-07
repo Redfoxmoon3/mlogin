@@ -28,36 +28,57 @@ void explicit_bzero(void*, size_t);
 
 static bool switch_user_context(struct passwd* pw, const char* username)
 {
-	/* temporary */
-	#ifndef INSECURE
-	if(initgroups(username, pw->pw_gid) == -1) {
-		printf("initgroups failed: %s", strerror(errno));
-		exit(1);
+	#ifndef __midipix__
+	if(!getuid()) {
+		if(initgroups(username, pw->pw_gid) == -1) {
+			printf("initgroups failed: %s", strerror(errno));
+			exit(1);
+		}
 	}
 	#endif
-	
-	#ifdef INSECURE
-		if((setuid(pw->pw_uid) != -1) && (setgid(pw->pw_gid) != -1))
-			return true;
+
+	/* this works for linux and midipix */
+	if(setgid(pw->pw_gid))
 		return false;
-	#else
-	gid_t oldgid = getegid();
-	uid_t olduid = geteuid();
-	
-	if((setegid(pw->pw_gid) != -1) && (setgid(pw->pw_gid) != -1) && (seteuid(pw->pw_uid) != -1) && (setuid(pw->pw_uid) != -1)) {
-		gid_t newgid = getgid();
-		uid_t newuid = getuid();
-		#ifdef debug
-		printf("old gid %d\n", oldgid);
-		printf("old uid %d\n", olduid);
-		printf("new gid %d\n", newgid);
-		printf("new uid %d\n", newuid);
-		#endif
-		if((newgid == oldgid) && (newuid == olduid))
-			return true;
-	}
-	return false;
-	#endif
+	if(setuid(pw->pw_uid))
+		return false;
+	return true;
+}
+
+static bool do_login(struct passwd* pwd, int pflag)
+{
+	if(*pwd->pw_shell == '\0')
+		pwd->pw_shell = "/bin/sh"; /* if /bin/sh doesn't exist, I do not care. blow up. */
+
+	if(chdir(pwd->pw_dir) < 0) {
+		printf("no home directory %s!\n", pwd->pw_dir); // handle -EPERM, -ENOMEM, -ESYMLNK
+
+		if(chdir("/") == -1) {
+			printf("chdir failed with %s", strerror(errno));
+			return false;
+			}
+				pwd->pw_dir = "/";
+			}
+
+                if(!pflag)
+			(void)clearenv();
+
+                (void)setenv("HOME", pwd->pw_dir, 1);
+                (void)setenv("SHELL", pwd->pw_shell, 1);
+                (void)setenv("TERM", "xterm", 0); /* rrrr. needs researching */
+                (void)setenv("LOGNAME", pwd->pw_name, 1);
+                (void)setenv("USER", pwd->pw_name, 1);
+#if 0
+                (void)setenv("PS1", "$ ", 0);
+#endif
+                (void)setenv("PATH", "/local/sbin:/local/bin:/sbin:/bin", 0);
+
+                (void)signal(SIGTSTP, SIG_DFL);
+                (void)signal(SIGQUIT, SIG_DFL);
+                (void)signal(SIGINT, SIG_DFL);
+
+                execlp(pwd->pw_shell, "-l", (const char*)NULL);
+		return false;
 }
 
 int main(int argc, char **argv)
@@ -70,7 +91,7 @@ int main(int argc, char **argv)
 	struct passwd *pwd;
 	char* username = NULL;
 	int c;
-	int pflag, fflag, iflag, wflag = 0;
+	int pflag, fflag, iflag = 0;
 
 	while((c = getopt(argc, argv, "pfh:iw")) != -1)
 		switch(c) {
@@ -101,66 +122,34 @@ int main(int argc, char **argv)
 	}
 	pwd = getpwnam(username);
 
-	if(!iflag)
-	{
-		char* pw = getpass("Password: ");
-		if(pwd) {
-			/* if hash == 0 then authenticated = true */
+	char* pw = getpass("Password: ");
+	if(pwd) {
+		if(!iflag) {
 			if(!(*pwd->pw_passwd == '\0' && !strlen(pw))) {
 				char* pw_encrypted = crypt(pw, pwd->pw_passwd);
 				if(!timingsafe_memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted))) {
 					puts("Login incorrect.");
 					explicit_bzero(pw, strlen(pw));
-					free(pw);
 					exit(1);
 				}
 			}
-			explicit_bzero(pw, strlen(pw));
-		} else {
-			/* user doesn't exist, bail */
-			puts("Login incorrect.");
-			explicit_bzero(pw, strlen(pw));
-			free(pw);
-			exit(1);
 		}
 	}
-	
+	else {
+		/* user doesn't exist, bail */
+		puts("Login incorrect.");
+		explicit_bzero(pw, strlen(pw));
+		exit(1);
+	}
+	explicit_bzero(pw, strlen(pw));
+
 	endpwent();
 
 	/* authenticated, attempt to set user context and spawn user shell */
 	if(switch_user_context(pwd, username)) {
-		if(*pwd->pw_shell == '\0')
-			pwd->pw_shell = "/bin/sh"; /* if /bin/sh doesn't exist, I do not care. blow up. */
-
-		if(chdir(pwd->pw_dir) < 0) {
-			printf("no home directory %s!\n", pwd->pw_dir); // handle -EPERM, -ENOMEM, -ESYMLNK
-				if(chdir("/") == -1) {
-					printf("chdir failed with %s", strerror(errno));
-					exit(1); /* no-one can save you now */
-				}
-			pwd->pw_dir = "/";
+		if(!do_login(pwd, pflag)) {
+			puts("failed to spawn shell.");
 		}
-
-		if(!pflag)
-			(void)clearenv();
-
-		(void)setenv("HOME", pwd->pw_dir, 1);
-		(void)setenv("SHELL", pwd->pw_shell, 1);
-		(void)setenv("TERM", "xterm", 0); /* rrrr. needs researching */
-		(void)setenv("LOGNAME", pwd->pw_name, 1);
-		(void)setenv("USER", pwd->pw_name, 1);
-#if 0
-		(void)setenv("PS1", "$ ", 0);
-#endif
-		(void)setenv("PATH", "/local/sbin:/local/bin:/sbin:/bin", 0);
-
-		(void)signal(SIGTSTP, SIG_DFL);
-		(void)signal(SIGQUIT, SIG_DFL);
-	        (void)signal(SIGINT, SIG_DFL);
-
-		execlp(pwd->pw_shell, "-i", (const char*)NULL);
-		printf("login failed with error: %s", strerror(errno));
-		exit(1);
 	}
 	puts("could not switch to specified user.");
 }
