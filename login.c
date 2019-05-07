@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 				usage();
 				break;
 		}
-		argv += optind;
+	argv += optind;
 
 	if(wflag)
 		username = get_win32_username();
