@@ -14,14 +14,9 @@
 #include <errno.h>
 #include <signal.h>
 #ifdef __midipix__
-#include <windows.h>
-#include <ctype.h>
-
 #define IFLAG 1
-#define WFLAG 1
 #else
 #define IFLAG 0
-#define WFLAG 0
 #endif
 
 #include "login.h"
@@ -30,22 +25,6 @@
 void explicit_bzero(void*, size_t);
 #endif
 
-
-static char* get_win32_username(void)
-{
-#ifdef __midipix__
-	size_t i;
-	char usernam[257];
-	unsigned int usernam_siz = sizeof(usernam);
-	if(GetUserNameA(usernam, &usernam_siz) == 0)
-		return "";
-	for(i = 0; i < 257; i++)
-		usernam[i] = tolower(usernam[i]);
-	return strdup(usernam);
-#else
-	return "";
-#endif
-}
 
 static bool switch_user_context(struct passwd* pw, const char* username)
 {
@@ -106,8 +85,6 @@ int main(int argc, char **argv)
 				break;
 			case 'i':
 				iflag = IFLAG; break;
-			case 'w':
-				wflag = WFLAG; break;
 			default:
 			case '?':
 				usage();
@@ -115,9 +92,7 @@ int main(int argc, char **argv)
 		}
 	argv += optind;
 
-	if(wflag)
-		username = get_win32_username();
-	else if(*argv)
+	if(*argv)
 		username = *argv;
 	else {
 		printf("login: ");
@@ -191,7 +166,6 @@ int main(int argc, char **argv)
 }
 
 void usage(void) {
-	puts("login -w (acquire username through Win32)");
 	puts("login -p (preserve environment)");
 	puts("login -f (no secondary authentication, unused)");
 	puts("login -h (pass remote server name to login, unused)");
