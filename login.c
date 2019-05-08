@@ -122,9 +122,9 @@ int main(int argc, char **argv)
 	}
 	pwd = getpwnam(username);
 
-	char* pw = getpass("Password: ");
 	if(pwd) {
 		if(!iflag) {
+			char* pw = getpass("Password: ");
 			if(!(*pwd->pw_passwd == '\0' && !strlen(pw))) {
 				char* pw_encrypted = crypt(pw, pwd->pw_passwd);
 				if(!timingsafe_memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted))) {
@@ -132,16 +132,18 @@ int main(int argc, char **argv)
 					explicit_bzero(pw, strlen(pw));
 					exit(1);
 				}
+				explicit_bzero(pw, strlen(pw));
 			}
 		}
 	}
 	else {
-		/* user doesn't exist, bail */
+		/* asking for password even if the user is not found, no /etc/passwd is found, etc. */
+		/* this stops easy probing for accounts */
+		char* pw = getpass("Password: ");
 		puts("Login incorrect.");
 		explicit_bzero(pw, strlen(pw));
 		exit(1);
 	}
-	explicit_bzero(pw, strlen(pw));
 
 	endpwent();
 
