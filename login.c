@@ -53,7 +53,7 @@ static bool do_login(struct passwd* pwd, int pflag)
 		pwd->pw_shell = "/bin/sh"; /* if /bin/sh doesn't exist, I do not care. blow up. */
 
 	if(chdir(pwd->pw_dir) < 0) {
-		printf("no home directory %s!\n", pwd->pw_dir); // handle -EPERM, -ENOMEM, -ESYMLNK
+		printf("no home directory %s!\n", pwd->pw_dir); /* handle -EPERM, -ENOMEM, -ESYMLNK */
 
 		if(chdir("/") == -1) {
 			printf("chdir failed with %s", strerror(errno));
