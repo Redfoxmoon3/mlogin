@@ -35,6 +35,8 @@ static bool switch_user_context(struct passwd* pw, const char* username)
 			exit(1);
 		}
 	}
+	#else
+	(void)username;
 	#endif
 
 	/* this works for linux and midipix */
