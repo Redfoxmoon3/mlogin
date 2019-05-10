@@ -93,14 +93,14 @@ int main(int argc, char **argv)
 	struct passwd *pwd;
 	char* username = NULL;
 	int c;
-	int pflag, fflag, iflag = 0;
+	int pflag, iflag = 0;
 
 	while((c = getopt(argc, argv, "pfh:iw")) != -1)
 		switch(c) {
 			case 'p':
 				pflag = 1; break;
 			case 'f':
-				fflag = 1; break; /* unused, pointless currently */
+				(void)0; break; /* unused, pointless currently */
 			case 'h':
 				if(getuid()) {
 					exit(1);
