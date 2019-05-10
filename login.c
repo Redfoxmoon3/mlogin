@@ -47,8 +47,17 @@ static bool switch_user_context(struct passwd* pw, const char* username)
 	return true;
 }
 
+extern char ** environ;
+
 static bool do_login(struct passwd* pwd, int pflag)
 {
+	char *	comspec;
+	size_t	envlen;
+	char **	envp;
+	char *	envstrs;
+	char *	envptrs[8];
+	char	envbuff[3072];
+
 	if(*pwd->pw_shell == '\0')
 		pwd->pw_shell = "/bin/sh"; /* if /bin/sh doesn't exist, I do not care. blow up. */
 
@@ -58,29 +67,77 @@ static bool do_login(struct passwd* pwd, int pflag)
 		if(chdir("/") == -1) {
 			printf("chdir failed with %s", strerror(errno));
 			return false;
-			}
-				pwd->pw_dir = "/";
-			}
+		} else {
+			pwd->pw_dir = "/";
+		}
+	}
 
-                if(!pflag)
-			(void)clearenv();
+	if(pflag) {
+		envp = environ;
 
-                (void)setenv("HOME", pwd->pw_dir, 1);
-                (void)setenv("SHELL", pwd->pw_shell, 1);
-                (void)setenv("TERM", "xterm", 0); /* rrrr. needs researching */
-                (void)setenv("LOGNAME", pwd->pw_name, 1);
-                (void)setenv("USER", pwd->pw_name, 1);
-#if 0
-                (void)setenv("PS1", "$ ", 0);
-#endif
-                (void)setenv("PATH", "/local/sbin:/local/bin:/sbin:/bin", 0);
+		(void)setenv("HOME", pwd->pw_dir, 1);
+		(void)setenv("SHELL", pwd->pw_shell, 1);
+		(void)setenv("TERM", "xterm", 0); /* rrrr. needs researching */
+		(void)setenv("LOGNAME", pwd->pw_name, 1);
+		(void)setenv("USER", pwd->pw_name, 1);
+		(void)setenv("PATH", "/local/sbin:/local/bin:/sbin:/bin", 0);
+	} else {
+		envlen  = snprintf(envbuff,0,"HOME=%s",pwd->pw_dir) + 1;
+		envlen += snprintf(envbuff,0,"SHELL=%s",pwd->pw_shell) + 1;
+		envlen += snprintf(envbuff,0,"TERM=%s","xterm") + 1;
+		envlen += snprintf(envbuff,0,"LOGNAME=%s",pwd->pw_name) + 1;
+		envlen += snprintf(envbuff,0,"USER=%s",pwd->pw_name) + 1;
+		envlen += snprintf(envbuff,0,"PATH=%s","/local/sbin:/local/bin:/sbin:/bin") + 1;
 
-                (void)signal(SIGTSTP, SIG_DFL);
-                (void)signal(SIGQUIT, SIG_DFL);
-                (void)signal(SIGINT, SIG_DFL);
+		if ((comspec = getenv("ComSpec")) || (comspec = getenv("COMSSPEC")))
+			envlen += snprintf(envbuff,0,"COMSPEC=%s",comspec) + 1;
 
-                execlp(pwd->pw_shell, "-l", (const char*)NULL);
-		return false;
+		if (envlen <= sizeof(envbuff)) {
+			envp    = envptrs;
+			envstrs = envbuff;
+		} else if ((envstrs = calloc(envlen,1))) {
+			envp    = envptrs;
+		} else {
+			return false;
+		}
+
+		envp[0]  = envstrs;
+		envstrs += sprintf(envstrs,"HOME=%s",pwd->pw_dir) + 1;
+
+		envp[1]  = envstrs;
+		envstrs += sprintf(envstrs,"SHELL=%s",pwd->pw_shell) + 1;
+
+		envp[2]  = envstrs;
+		envstrs += sprintf(envstrs,"TERM=%s","xterm") + 1;
+
+		envp[3]  = envstrs;
+		envstrs += sprintf(envstrs,"LOGNAME=%s",pwd->pw_name) + 1;
+
+		envp[4]  = envstrs;
+		envstrs += sprintf(envstrs,"USER=%s",pwd->pw_name) + 1;
+
+		envp[5]  = envstrs;
+		envstrs += sprintf(envstrs,"PATH=%s","/local/sbin:/local/bin:/sbin:/bin") + 1;
+
+		envp[6] = 0;
+		envp[7] = 0;
+
+		if (comspec) {
+			envp[6]  = envstrs;
+			envstrs += sprintf(envstrs,"COMSPEC=%s",comspec) + 1;
+		}
+	}
+
+	(void)signal(SIGTSTP, SIG_DFL);
+	(void)signal(SIGQUIT, SIG_DFL);
+	(void)signal(SIGINT, SIG_DFL);
+
+	execve(
+		pwd->pw_shell,
+		(char *[]){pwd->pw_shell,"-l",0},
+		envp);
+
+	return false;
 }
 
 int main(int argc, char **argv)
