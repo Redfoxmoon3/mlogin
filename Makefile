@@ -1,4 +1,5 @@
 CFLAGS += -std=c99 -I. -Wall -Werror -Wextra -Wundef
+LDFLAGS += -lcrypt
 
 login: login.c timingsafe_memcmp.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
