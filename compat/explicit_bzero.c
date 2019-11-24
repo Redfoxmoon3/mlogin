@@ -4,11 +4,12 @@ int dummy;
 
 #else
 
-#include <stdint.h>
+#include <stdlib.h>
 
 void explicit_bzero(void* s, size_t n)
 {
 	volatile char* buf = (volatile char*)s;
-	while(n-- *buf++ = '\0');
+	while(n--)
+		*buf++ = '\0';
 }
 #endif

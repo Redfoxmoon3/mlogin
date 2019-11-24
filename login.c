@@ -2,7 +2,6 @@
 /* Copyright (c) 2019  Ørjan Malde           */
 /* Released under LGPL, see COPYRIGHT.MLOGIN */
 
-#define _GNU_SOURCE
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -20,34 +19,7 @@
 #endif
 
 #include "login.h"
-
-#ifndef HAVE_EXPLICIT_BZERO
-void explicit_bzero(void*, size_t);
-#endif
-
-
-static bool switch_user_context(struct passwd* pw, const char* username)
-{
-	#ifndef __midipix__
-	if(!getuid()) {
-		if(initgroups(username, pw->pw_gid) == -1) {
-			printf("initgroups failed: %s", strerror(errno));
-			exit(1);
-		}
-	}
-	#else
-	(void)username;
-	#endif
-
-	/* this works for linux and midipix */
-	if(setgid(pw->pw_gid))
-		return false;
-	if(setuid(pw->pw_uid))
-		return false;
-	return true;
-}
-
-extern char ** environ;
+#include "os/os.h"
 
 static bool do_login(struct passwd* pwd, int pflag)
 {
@@ -186,7 +158,8 @@ int main(int argc, char **argv)
 			char* pw = getpass("Password: ");
 			if(!(*pwd->pw_passwd == '\0' && !strlen(pw))) {
 				char* pw_encrypted = crypt(pw, pwd->pw_passwd);
-				if(!timingsafe_memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted))) {
+				/* if(timingsafe_memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted))) { */
+				if(memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted)) != 0) {
 					puts("Login incorrect.");
 					explicit_bzero(pw, strlen(pw));
 					exit(1);
@@ -207,7 +180,7 @@ int main(int argc, char **argv)
 	endpwent();
 
 	/* authenticated, attempt to set user context and spawn user shell */
-	if(switch_user_context(pwd, username)) {
+	if(switch_user_context(pwd, username) == 0) {
 		if(!do_login(pwd, pflag)) {
 			puts("failed to spawn shell.");
 		}
