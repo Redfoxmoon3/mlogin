@@ -1,0 +1,4 @@
+*.o
+login
+login.exe
+Makefile
