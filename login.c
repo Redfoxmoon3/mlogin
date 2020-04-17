@@ -190,8 +190,8 @@ int main(int argc, char **argv)
 
 void usage(void)
 {
-	puts("login -p (preserve environment)");
-	puts("login -f (no secondary authentication, unused)");
-	puts("login -h (pass remote server name to login, unused)");
+	puts("login -p		do not the destroy the environment");
+	puts("login -f		do not perform secondary authentication (noop)");
+	puts("login -h		pass remote server name to utmp (noop)");
 	exit(0);
 }
