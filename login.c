@@ -188,7 +188,8 @@ int main(int argc, char **argv)
 	puts("could not switch to specified user.");
 }
 
-void usage(void) {
+void usage(void)
+{
 	puts("login -p (preserve environment)");
 	puts("login -f (no secondary authentication, unused)");
 	puts("login -h (pass remote server name to login, unused)");
