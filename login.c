@@ -153,33 +153,33 @@ int main(int argc, char **argv)
 	}
 	pwd = getpwnam(username);
 
-	if(pwd) {
-		if(!iflag) {
-			char* pw = getpass("Password: ");
-			if(!(*pwd->pw_passwd == '\0' && !strlen(pw))) {
-				char* pw_encrypted = crypt(pw, pwd->pw_passwd);
-				/* if(timingsafe_memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted))) { */
-				if(memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted)) != 0) {
-					puts("Login incorrect.");
-					explicit_bzero(pw, strlen(pw));
-					exit(1);
-				}
-				explicit_bzero(pw, strlen(pw));
-			}
-		}
-	}
-	else {
-		/* asking for password even if the user is not found, no /etc/passwd is found, etc. */
-		/* this stops easy probing for accounts */
+	/* guard against account probing */
+	if(!pwd) {
 		char* pw = getpass("Password: ");
-		puts("Login incorrect.");
 		explicit_bzero(pw, strlen(pw));
+		endpwent();
+		puts("Login incorrect.");
 		exit(1);
+	}
+
+	/* midipix: are we spawning a shell? */
+	if(!iflag) {
+		char* pw = getpass("Password: ");
+		if(!(*pwd->pw_passwd == '\0' && !strlen(pw))) { /* TODO: check for shadow passwords and locked accounts */
+			char* pw_encrypted = crypt(pw, pwd->pw_passwd);
+			/* if(timingsafe_memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted))) { */
+			if(memcmp(pw_encrypted, pwd->pw_passwd, strlen(pw_encrypted)) != 0) {
+				puts("Login incorrect.");
+				explicit_bzero(pw, strlen(pw));
+				exit(1);
+			}
+			explicit_bzero(pw, strlen(pw));
+		}
 	}
 
 	endpwent();
 
-	/* authenticated, attempt to set user context and spawn user shell */
+	/* authenticated; attempt to set user context and spawn user shell */
 	if(switch_user_context(pwd, username) == 0) {
 		if(!do_login(pwd, pflag)) {
 			puts("failed to spawn shell.");
